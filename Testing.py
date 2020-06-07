@@ -80,16 +80,30 @@ def train_network(network, train, l_rate, n_epoch, n_outputs):
 		sum_error = 0
 		for row in train:
 			outputs = forward_propagate(network, row)
+			# for i in range(len(network)):
+			# 	for j in range(len(network[i])):
+			# 		print(network[i][j]['delta'])
+			#print(outputs)
 			expected = [0 for i in range(n_outputs)]
 			expected[row[-1]] = 1
 			sum_error += sum([(expected[i]-outputs[i])**2 for i in range(len(expected))])
 			#print(outputs)
 			#print(expected)
 			#print(sum_error)
-			#print(network)
 			backward_propagate_error(network, expected)
-			#print(network)
+			# for i in range(len(network)):
+			# 	for j in range(len(network[i])):
+			# 		print(network[i][j]['delta'])
+			# for i in range(len(network)):
+			# 	for j in range(len(network[i])):
+			# 		print(network[i][j]['weights'])
 			update_weights(network, row, l_rate)
+			for i in range(len(network)):
+				for j in range(len(network[i])):
+					print(network[i][j]['delta'])
+			# for i in range(len(network)):
+			# 	for j in range(len(network[i])):
+			# 		print(network[i][j]['weights'])
 		print('>epoch=%d, lrate=%.3f, error=%.3f' % (epoch, l_rate, sum_error))
  
 # Test training backprop algorithm
@@ -105,6 +119,8 @@ dataset = [[2.7810836,2.550537003,0],
 	[8.675418651,-0.242068655,1],
 	[7.673756466,3.508563011,1]]
 
+dataset = [[2.7810836,2.550537003,0],
+    [7.673756466,3.508563011,1]]
 
 n_inputs = len(dataset[0]) - 1
 n_outputs = len(set([row[-1] for row in dataset]))

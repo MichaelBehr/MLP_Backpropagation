@@ -47,9 +47,9 @@ def Forward_Propagate(input_row, MLP, neuron_outputs):
         prop_inputs = []
         for j in np.arange(0,len(MLP[i])):
             # compute initial neuron output
-            neuron_outputs[i][j] =(neuron_output(signal,MLP[i][j]))
+            output = neuron_output(signal,MLP[i][j])
             # now feed output through the activation function
-            neuron_outputs[i][j] = sigmoid(neuron_outputs[i][j])
+            neuron_outputs[i][j] = sigmoid(output)
             prop_inputs.append(neuron_outputs[i][j])
         signal = prop_inputs
     return(signal,neuron_outputs)
@@ -106,16 +106,21 @@ def train(MLP, neuron_outputs, output_changes, train_data, Learning_Rate, n_epoc
         error = 0
         # for each training sample (row) in the data
         for row in train_data:
+            #print(neuron_outputs)
             signal_output, neuron_outputs = Forward_Propagate(row,MLP,neuron_outputs)
+            #print(neuron_outputs)
+            #print(signal_output)
             Expected_output = [0 for i in np.arange(0,n_outputs)]
             Expected_output[row[-1]] = 1
             error = error + sum([(Expected_output[i]-signal_output[i])**2 for i in range(len(Expected_output))])
-            #print(neuron_outputs)
             Back_Propagate(Expected_output, neuron_outputs, output_changes, MLP)
             #print(output_changes)
             #print(neuron_outputs)
-            #print(output_changes)
+            #print(MLP)
             update(MLP, neuron_outputs, output_changes, row, Learning_Rate)
+            #print(neuron_outputs)
+            #print(output_changes)
+            #print(MLP)
         print('>epoch=%d, Learning_rate=%.3f, error=%.3f' % (epoch, Learning_Rate, error))
 ###############################################################################
 #################                 SCRIPT                  #####################
@@ -136,7 +141,8 @@ dataset = [[2.7810836,2.550537003,0],
     [8.675418651,-0.242068655,1],
     [7.673756466,3.508563011,1]]
 
-
+dataset = [[2.7810836,2.550537003,0],
+    [7.673756466,3.508563011,1]]
 
 n_inputs = len(dataset[0]) - 1
 n_outputs = len(set([row[-1] for row in dataset]))
