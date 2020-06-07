@@ -49,16 +49,17 @@ def Forward_Propagate(input_row, MLP, neuron_outputs):
             # compute initial neuron output
             neuron_outputs[i][j] =(neuron_output(signal,MLP[i][j]))
             # now feed output through the activation function
-            prop_inputs.append(sigmoid(neuron_outputs[i][j]))
+            neuron_outputs[i][j] = sigmoid(neuron_outputs[i][j])
+            prop_inputs.append(neuron_outputs[i][j])
         signal = prop_inputs
     return(signal,neuron_outputs)
 
 # Sigmoid activation function
 def sigmoid(x):
-    return(1/(1 + np.exp(-x)))
+    return(1.0/(1.0 + exp(-x)))
 # derivative of the activation function that we need to create the error function
 def derivative(x):
-    return(x*(1-x))
+    return(x*(1.0-x))
   
 # back propagation algorithm
 def Back_Propagate(Expected_output, neuron_outputs, output_changes, MLP):
@@ -91,9 +92,7 @@ def update(MLP, neuron_outputs, output_changes, input_row, Learning_Rate):
         # if this isn't the first layer (ie. now comparing hidden to output layer)
         if i != 0:
             # take the outputs from the last layer
-            inputs = []
-            for j in np.arange(0,len(MLP[i-1])):
-                inputs.append(neuron_outputs[i-1][j])
+            inputs = [neuron_outputs[i-1][j] for N in MLP[i-1]]
         # loop through the layer and update each neuron with respect to the inputs from the last year
         for k in np.arange(0,len(MLP[i])):
             # loop through the inputs
@@ -111,12 +110,13 @@ def train(MLP, neuron_outputs, output_changes, train_data, Learning_Rate, n_epoc
             Expected_output = [0 for i in np.arange(0,n_outputs)]
             Expected_output[row[-1]] = 1
             error = error + sum([(Expected_output[i]-signal_output[i])**2 for i in range(len(Expected_output))])
+            #print(neuron_outputs)
             Back_Propagate(Expected_output, neuron_outputs, output_changes, MLP)
-            print(MLP)
+            #print(output_changes)
             #print(neuron_outputs)
             #print(output_changes)
             update(MLP, neuron_outputs, output_changes, row, Learning_Rate)
-        #print('>epoch=%d, Learning_rate=%.3f, error=%.3f' % (epoch, Learning_Rate, error))
+        print('>epoch=%d, Learning_rate=%.3f, error=%.3f' % (epoch, Learning_Rate, error))
 ###############################################################################
 #################                 SCRIPT                  #####################
 
@@ -136,9 +136,10 @@ dataset = [[2.7810836,2.550537003,0],
     [8.675418651,-0.242068655,1],
     [7.673756466,3.508563011,1]]
 
+
+
 n_inputs = len(dataset[0]) - 1
 n_outputs = len(set([row[-1] for row in dataset]))
-print(n_outputs)
 
 # now that we have the data in matrix we can initialize our MLP network
 nn = []
@@ -164,7 +165,12 @@ neuron_outputs.append(o2)
 nn.append(OL)
 output_changes = copy.deepcopy(neuron_outputs)
 
-train(nn, neuron_outputs, output_changes, dataset, 0.5, 20, n_outputs)
+
+train(nn, neuron_outputs, output_changes, dataset, 0.5, 1, n_outputs)
+
+for layer in nn:
+    print(layer)
+
 
 # Now we implement Forward propagation through the MLP. Remember the activation 
 # for each neuron is simply just the sum of the weights(for that neuron)
