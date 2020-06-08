@@ -2,10 +2,35 @@
 """
 Created on Thu Jun  4 11:51:57 2020
 
+Inspiration Reference: https://www.tensorflow.org/api_docs/python/tf/keras/Model
+
 @author: Michael
 """
 import numpy as np
 from random import seed
+import copy
+########################### CLASS FOR MLP MODEL ###############################
+
+# we are going to create a class to store our MLP variables (weights, bias)
+class MLP:
+    def __init__(self, input_data, hidden_dim, output_labels):
+        
+        # store the input data, and output_labels
+        self.input_data = input_data
+        self.output_labels = output_labels
+        
+        input_dim = input_data.shape[1]
+        output_dim = output_labels.shape[1]
+        
+        # Hidden layer weight initialization + bias term initialization
+        self.w1 = np.random.randn(input_dim, hidden_dim)
+        self.b1 = np.zeros((1, hidden_dim))
+        
+        # Output layer weight initialization + bias term initialization
+        self.w2 = np.random.randn(hidden_dim, output_dim)
+        self.b2 = np.zeros((1, output_dim))
+
+
 
 ######################### FUNCTIONS FOR MLP MODEL #############################
 
@@ -34,7 +59,6 @@ def error(pred, real):
     loss = np.sum(logp)/n_samples
     return loss
 
-
 def Forward_Propagate(MLP):
     
     # Forward propagation is just the inputs dot producted with the weights
@@ -55,7 +79,7 @@ def Back_Propagate(MLP,LR):
     error_2 = cross_entropy(MLP.O2, MLP.output_labels)
     
     # Signal change sent back
-    O2_delta = np.dot(error, MLP.w2.T)
+    O2_delta = np.dot(error_2, MLP.w2.T)
     
     # Error for W1
     error_1 = O2_delta * derivative(MLP.O1)
@@ -66,12 +90,15 @@ def Back_Propagate(MLP,LR):
     MLP.b1 = MLP.b1 - LR * np.sum(error_1, axis=0)
 
 def predict(MLP, data):
+    
     MLP.input_data = data
     Forward_Propagate(MLP)
-    return MLP.O2.argmax()
+    
+    return(MLP.O2.argmax())
 
 def train(MLP_Model,n_epochs,LR):
     
+    val_accuracy = 0
     # Run for each of the epochs
     for i in np.arange(0,n_epochs):
         # For each epoch we forward propagate data to achieve output and then 
@@ -84,35 +111,41 @@ def train(MLP_Model,n_epochs,LR):
         
         # Now use back prop to update the weights
         Back_Propagate(MLP_Model,LR)
-    
+        
+        MLP_Copy = copy.deepcopy(MLP_Model)
+        temp = get_acc(x_val, np.array(y_val),MLP_Copy)
+        
+        # If validation accuracy drops below 0.5% threshold the training ends early 
+        if((temp - val_accuracy < -0.5) and (i > 10)):
+            val_accuracy = temp
+            print("Training accuracy : ", get_acc(x_train, np.array(y_train)), MLP_Copy)
+            print("Validation accuracy : ", val_accuracy)
+            break
+        else:
+            val_accuracy = temp
+            print("Training accuracy : ", get_acc(x_train, np.array(y_train)), MLP_Copy)
+            print("Validation accuracy : ", val_accuracy)
 		
-def get_acc(x, y):
-    acc = 0
-    for xx,yy in zip(x, y):
-        s = predict(MLP_Model, xx)
-        if s == np.argmax(yy):
-            acc +=1
-    return acc/len(x)*100
+def get_acc(data, labels, MLP):
+    Accuracy = 0
+    for x,y in zip(data, labels):
+        s = predict(MLP, x)
+        if s == np.argmax(y):
+            Accuracy = Accuracy + 1
+    return(Accuracy/len(data)*100)
 
-# we are going to create a class to store our MLP variables (weights, bias)
-class MLP:
-    def __init__(self, input_data, hidden_dim, output_labels):
-        
-        # store the input data, and output_labels
-        self.input_data = input_data
-        self.output_labels = output_labels
-        
-        input_dim = input_data.shape[1]
-        output_dim = output_labels.shape[1]
-        
-        # Hidden layer weight initialization + bias term initialization
-        self.w1 = np.random.randn(input_dim, hidden_dim)
-        self.b1 = np.zeros((1, hidden_dim))
-        
-        # Output layer weight initialization + bias term initialization
-        self.w2 = np.random.randn(hidden_dim, output_dim)
-        self.b2 = np.zeros((1, output_dim))
-
+def test_train_split(train_data,train_labels,Split):
+    
+    Train_size = round(len(train_data)*Split)
+    
+    # random permutation of the data in order to create a validation/test sets
+    idx = np.random.permutation(train_data.shape[0])
+    training_idx, test_idx = idx[:Train_size], idx[Train_size:]
+    x_train, x_test = train_data[training_idx,:], train_data[test_idx,:]
+    y_train, y_test = train_labels[training_idx,:], train_labels[test_idx,:]
+    
+    return(x_train,y_train,x_test, y_test)
+    
 
 ############################### SCRIPT ########################################
 
@@ -123,19 +156,15 @@ train_labels = np.loadtxt(open("train_labels.csv", "rb"), delimiter=",")
 # random seed
 seed(42)
 
-# create our test/train split for validation and test 
-Train_size = round(len(train_data)*0.7)
-Val_size = round(len(train_data)*0.2)
+# create test/train split
+[x_train, y_train, x_test, y_test] = test_train_split(train_data,train_labels,0.9)
 
-# random permutation of the data in order to create a validation/test sets
-idx = np.random.permutation(train_data.shape[0])
-training_idx, test_idx = idx[:Train_size], idx[Train_size:(Train_size+Val_size)]
-x_train, x_val = train_data[training_idx,:], train_data[test_idx,:(Train_size+Val_size)]
-y_train, y_val = train_labels[training_idx,:], train_labels[test_idx,:(Train_size+Val_size)]
-			
+# create val/train split
+[x_train, y_train, x_val, y_val] = test_train_split(x_train,y_train,0.8)
+
 LR = 0.5
 Hidden_Layer_Dim = 640
-n_epochs = 25
+n_epochs = 250
 
 # Initialize the MLP model using the input data, hidden layer, and # of outputs
 # to shape the layers correctly
@@ -145,5 +174,6 @@ MLP_Model = MLP(x_train, Hidden_Layer_Dim, np.array(y_train))
 train(MLP_Model, n_epochs, LR)
 
 	
-print("Training accuracy : ", get_acc(x_train, np.array(y_train)))
-print("Test accuracy : ", get_acc(x_val, np.array(y_val)))
+print("\n\nFinal Training accuracy : ", get_acc(x_train, np.array(y_train)),MLP_Model)
+print("Final Validation accuracy : ", get_acc(x_val, np.array(y_val)),MLP_Model)
+print("Test accuracy : ", get_acc(x_test, np.array(y_test)),MLP_Model)
