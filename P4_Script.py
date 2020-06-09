@@ -51,13 +51,13 @@ def softmax(x):
 def cross_entropy(pred, real):
     n_samples = real.shape[0]
     res = pred - real
-    return res/n_samples
+    return(res/n_samples)
 # calculate error/loss 
 def error(pred, real):
     n_samples = real.shape[0]
     logp = - np.log(pred[np.arange(n_samples), real.argmax(axis=1)])
     loss = np.sum(logp)/n_samples
-    return loss
+    return(loss)
 
 def Forward_Propagate(MLP):
     
@@ -116,14 +116,14 @@ def train(MLP_Model,n_epochs,LR):
         temp = get_acc(x_val, np.array(y_val),MLP_Copy)
         
         # If validation accuracy drops below 0.5% threshold the training ends early 
-        if((temp - val_accuracy < -0.5) and (i > 10)):
-            val_accuracy = temp
-            print("Training accuracy : ", get_acc(x_train, np.array(y_train)), MLP_Copy)
+        if((temp - val_accuracy < -0.02) and (i > 10)):
+            print("Training accuracy : ", get_acc(x_train, np.array(y_train), MLP_Copy))
             print("Validation accuracy : ", val_accuracy)
             break
         else:
             val_accuracy = temp
-            print("Training accuracy : ", get_acc(x_train, np.array(y_train)), MLP_Copy)
+            print("%%%%%%%% Finished training at Epoch : ", i)
+            print("Training accuracy : ", get_acc(x_train, np.array(y_train), MLP_Copy))
             print("Validation accuracy : ", val_accuracy)
 		
 def get_acc(data, labels, MLP):
@@ -146,7 +146,24 @@ def test_train_split(train_data,train_labels,Split):
     
     return(x_train,y_train,x_test, y_test)
     
-
+def param_tuning(n_epochs):
+    Training_acc = []
+    Validation_acc = []
+    Testing_acc = []
+    for LR in np.arange(0.005, 1, 0.05):
+        print("\nIteration LR = ", LR)
+        MLP_Model = MLP(x_train, Hidden_Layer_Dim, np.array(y_train))
+        train(MLP_Model, n_epochs, LR)
+        
+        Training_acc.append(get_acc(x_train, np.array(y_train),MLP_Model))
+        Validation_acc.append(get_acc(x_val, np.array(y_val),MLP_Model))
+        Testing_acc.append(get_acc(x_test, np.array(y_test),MLP_Model))
+        
+        print("\n\nFinal Training accuracy : ", Training_acc[-1])
+        print("Final Validation accuracy : ", Validation_acc[-1])
+        print("Test accuracy : ", Testing_acc[-1])
+        print("Finishing Iteration LR = ", LR)
+    return(Training_acc,Validation_acc,Testing_acc)
 ############################### SCRIPT ########################################
 
 # Load training data and labels
@@ -154,7 +171,7 @@ train_data = np.loadtxt(open("train_data.csv", "rb"), delimiter=",")
 train_labels = np.loadtxt(open("train_labels.csv", "rb"), delimiter=",")
 
 # random seed
-seed(42)
+seed(1)
 
 # create test/train split
 [x_train, y_train, x_test, y_test] = test_train_split(train_data,train_labels,0.9)
@@ -162,18 +179,19 @@ seed(42)
 # create val/train split
 [x_train, y_train, x_val, y_val] = test_train_split(x_train,y_train,0.8)
 
-LR = 0.5
+LR = 0.1
 Hidden_Layer_Dim = 640
-n_epochs = 250
+n_epochs = 2000
 
 # Initialize the MLP model using the input data, hidden layer, and # of outputs
 # to shape the layers correctly
 MLP_Model = MLP(x_train, Hidden_Layer_Dim, np.array(y_train))
 
 # Now train the model
-train(MLP_Model, n_epochs, LR)
+#train(MLP_Model, n_epochs, LR)
 
-	
-print("\n\nFinal Training accuracy : ", get_acc(x_train, np.array(y_train)),MLP_Model)
-print("Final Validation accuracy : ", get_acc(x_val, np.array(y_val)),MLP_Model)
-print("Test accuracy : ", get_acc(x_test, np.array(y_test)),MLP_Model)
+[Training_acc,Validation_acc,Testing_acc] = param_tuning(n_epochs)
+
+#print("\n\nFinal Training accuracy : ", get_acc(x_train, np.array(y_train),MLP_Model))
+#print("Final Validation accuracy : ", get_acc(x_val, np.array(y_val),MLP_Model))
+#print("Test accuracy : ", get_acc(x_test, np.array(y_test),MLP_Model))
