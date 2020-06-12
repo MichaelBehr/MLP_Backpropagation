@@ -23,11 +23,11 @@ class MLP:
         output_dim = output_labels.shape[1]
         
         # Hidden layer weight initialization + bias term initialization
-        self.w1 = np.random.randn(input_dim, hidden_dim)
+        self.w1 = 0.1*np.random.randn(input_dim, hidden_dim)
         self.b1 = np.zeros((1, hidden_dim))
         
         # Output layer weight initialization + bias term initialization
-        self.w2 = np.random.randn(hidden_dim, output_dim)
+        self.w2 = 0.1*np.random.randn(hidden_dim, output_dim)
         self.b2 = np.zeros((1, output_dim))
 
 
@@ -83,7 +83,8 @@ def Back_Propagate(MLP,LR):
     
     # Error for W1
     error_1 = O2_delta * derivative(MLP.O1)
-
+    
+    # Update weights + bias terms
     MLP.w2 = MLP.w2 - LR * np.dot(MLP.O1.T, error_2)
     MLP.b2 = MLP.b2 - LR * np.sum(error_2, axis=0, keepdims=True)
     MLP.w1 = MLP.w1 - LR * np.dot(MLP.input_data.T, error_1)
@@ -96,27 +97,38 @@ def predict(MLP, data):
     
     return(MLP.O2.argmax())
 
-def train(MLP_Model,n_epochs,LR):
+def train(MLP_Model,n_epochs, batch_size,LR):
     
     val_accuracy = 0
+    patience = 0
+    MODEL_INPUT= copy.deepcopy(MLP_Model.input_data)
+    MODEL_OUTPUT = copy.deepcopy(MLP_Model.output_labels)
     # Run for each of the epochs
     for i in np.arange(0,n_epochs):
-        # For each epoch we forward propagate data to achieve output and then 
-        # backpropagate with the error to adjust weights
-        Forward_Propagate(MLP_Model)
-        
-        # after forward propagation calculate the error or loss at the output
-        loss = error(MLP_Model.O2, MLP_Model.output_labels)
-        print('Error :', loss)
-        
-        # Now use back prop to update the weights
-        Back_Propagate(MLP_Model,LR)
-        
+        for j in np.arange(0,(len(MODEL_INPUT)-batch_size), batch_size):
+            # For each epoch we forward propagate data to achieve output and then 
+            # backpropagate with the error to adjust weights
+            MLP_Model.input_data = MODEL_INPUT[j:(j+batch_size)]
+            MLP_Model.output_labels=MODEL_OUTPUT[j:(j+batch_size)]
+            Forward_Propagate(MLP_Model)
+            
+            # after forward propagation calculate the error or loss at the output
+            #loss = error(MLP_Model.O2, MLP_Model.output_labels)
+            #print('Error :', loss)
+            
+            # Now use back prop to update the weights
+            Back_Propagate(MLP_Model,LR)
+            
         MLP_Copy = copy.deepcopy(MLP_Model)
         temp = get_acc(x_val, np.array(y_val),MLP_Copy)
+            
+        if((temp - val_accuracy) <= 0):
+            patience = patience + 1
+        else:
+            patience= 0
         
-        # If validation accuracy drops below 0.5% threshold the training ends early 
-        if((temp - val_accuracy < -0.02) and (i > 10)):
+        # If validation accuracy stagnates or drops, we terminate training
+        if((patience >= 20)):
             print("Training accuracy : ", get_acc(x_train, np.array(y_train), MLP_Copy))
             print("Validation accuracy : ", val_accuracy)
             break
@@ -125,7 +137,7 @@ def train(MLP_Model,n_epochs,LR):
             print("%%%%%%%% Finished training at Epoch : ", i)
             print("Training accuracy : ", get_acc(x_train, np.array(y_train), MLP_Copy))
             print("Validation accuracy : ", val_accuracy)
-		
+        
 def get_acc(data, labels, MLP):
     Accuracy = 0
     for x,y in zip(data, labels):
@@ -146,14 +158,15 @@ def test_train_split(train_data,train_labels,Split):
     
     return(x_train,y_train,x_test, y_test)
     
-def param_tuning(n_epochs):
+def param_tuning(n_epochs,batch_size):
     Training_acc = []
     Validation_acc = []
     Testing_acc = []
-    for LR in np.arange(0.005, 1, 0.05):
-        print("\nIteration LR = ", LR)
+    Hidden_Layer_Dim = 768
+    for LR in np.arange(0.025, 0.5, 0.025):
+        print("\nIteration H_Dim = ", Hidden_Layer_Dim)
         MLP_Model = MLP(x_train, Hidden_Layer_Dim, np.array(y_train))
-        train(MLP_Model, n_epochs, LR)
+        train(MLP_Model, n_epochs, batch_size, LR)
         
         Training_acc.append(get_acc(x_train, np.array(y_train),MLP_Model))
         Validation_acc.append(get_acc(x_val, np.array(y_val),MLP_Model))
@@ -181,7 +194,8 @@ seed(1)
 
 LR = 0.1
 Hidden_Layer_Dim = 640
-n_epochs = 2000
+n_epochs = 150
+batch_size = 39
 
 # Initialize the MLP model using the input data, hidden layer, and # of outputs
 # to shape the layers correctly
@@ -190,7 +204,7 @@ MLP_Model = MLP(x_train, Hidden_Layer_Dim, np.array(y_train))
 # Now train the model
 #train(MLP_Model, n_epochs, LR)
 
-[Training_acc,Validation_acc,Testing_acc] = param_tuning(n_epochs)
+[Training_acc,Validation_acc,Testing_acc] = param_tuning(n_epochs,batch_size)
 
 #print("\n\nFinal Training accuracy : ", get_acc(x_train, np.array(y_train),MLP_Model))
 #print("Final Validation accuracy : ", get_acc(x_val, np.array(y_val),MLP_Model))
